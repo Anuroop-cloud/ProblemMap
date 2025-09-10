@@ -1,0 +1,77 @@
+{
+  "project_name": "CollectiveProblems",
+  "short_description": "A site that collects real-world issues from Reddit API (with user context) + direct submissions, runs them through Gemini for summarization/categorization, and displays them in a black-themed feed. Purpose: highlight collective pain points with both source credibility and AI-driven clarity.",
+  "sources": {
+    "reddit": {
+      "method": "PRAW or Reddit official API",
+      "data_fields": [
+        "id",
+        "title",
+        "selftext",
+        "created_utc",
+        "score",
+        "subreddit",
+        "author_username",
+        "author_link_karma",
+        "author_comment_karma"
+      ],
+      "notes": "Include author username and karma (if available) to show credibility. Keep PII rules in mind; show only public metadata."
+    },
+    "user_submissions": {
+      "fields": [
+        "id",
+        "original_text",
+        "created_at",
+        "user_identifier (optional, anonymous allowed)"
+      ],
+      "notes": "Processed through same Gemini pipeline as Reddit data."
+    }
+  },
+  "database_schema": "CREATE TABLE problems (\n  id SERIAL PRIMARY KEY,\n  source TEXT NOT NULL, -- 'Reddit' or 'User'\n  subreddit TEXT,\n  author_username TEXT,\n  author_karma INTEGER,\n  original_text TEXT NOT NULL,\n  summary TEXT,\n  keywords TEXT[],\n  category TEXT,\n  created_at TIMESTAMP DEFAULT NOW(),\n  score INTEGER DEFAULT 0, -- reddit score or user votes\n  processed BOOLEAN DEFAULT FALSE\n);\n\nCREATE TABLE votes (\n  id SERIAL PRIMARY KEY,\n  problem_id INTEGER REFERENCES problems(id) ON DELETE CASCADE,\n  user_identifier TEXT,\n  created_at TIMESTAMP DEFAULT NOW()\n);",
+  "backend_endpoints": {
+    "POST /submitProblem": {
+      "desc": "Accepts {text, user(optional)}. Calls Gemini, stores with source='User'."
+    },
+    "POST /loadRedditData": {
+      "desc": "Fetches subreddit posts with author_username and karma, runs Gemini, stores in DB."
+    },
+    "GET /getProblems": {
+      "desc": "Returns paginated feed including summary, keywords, category, author info, score."
+    },
+    "POST /voteProblem": {
+      "desc": "Upvote/downvote for user-submitted items. For Reddit items, keep original Reddit score as read-only."
+    }
+  },
+  "gemini_processing": {
+    "prompt_template": "Summarize this problem in ≤3 sentences. Extract 3-5 keywords. Categorize into Traffic, Environment, Education, Healthcare, Governance, Technology, Other. Return JSON {summary, keywords[], category}. Problem: \"{{TEXT}}\". Source: {{Reddit/User}}."
+  },
+  "ui_theme": {
+    "background": "#000000",
+    "surface": "#0b0b0b",
+    "card": "#101010",
+    "muted": "#1a1a1a",
+    "text_primary": "#e6e6e6",
+    "text_secondary": "#bdbdbd",
+    "accent": "#9e9e9e",
+    "notes": "Usernames and subreddits shown in muted gray. Karma/score shown as subtle badges."
+  },
+  "frontend_display": {
+    "ProblemCard": {
+      "fields_shown": [
+        "summary",
+        "keywords",
+        "category",
+        "source",
+        "author_username (if Reddit)",
+        "score/karma"
+      ],
+      "style": "Black background, rounded card, keywords as gray chips, author as muted text."
+    },
+    "FilterBar": "Filter by category, source (Reddit/User), and subreddit."
+  },
+  "export": [
+    "Allow CSV/JSON export including source, username, karma, processed fields.",
+    "Admin panel: toggle show/hide usernames if anonymity is preferred."
+  ],
+  "final_instruction": "Generate the entire website (frontend + backend + DB schema) with this Reddit+User dual-source system. Ensure author_username and karma are captured from Reddit API and displayed in frontend ProblemCard."
+}
