@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 0%);
+  --foreground: hsl(0, 0%, 90%);
+  --card: hsl(0, 0%, 6%);
+  --card-foreground: hsl(0, 0%, 90%);
+  --popover: hsl(0, 0%, 4%);
+  --popover-foreground: hsl(0, 0%, 90%);
+  --primary: hsl(0, 0%, 62%);
+  --primary-foreground: hsl(0, 0%, 0%);
+  --secondary: hsl(0, 0%, 10%);
+  --secondary-foreground: hsl(0, 0%, 90%);
+  --muted: hsl(0, 0%, 10%);
+  --muted-foreground: hsl(0, 0%, 74%);
+  --accent: hsl(0, 0%, 10%);
+  --accent-foreground: hsl(0, 0%, 90%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --border: hsl(0, 0%, 14%);
+  --input: hsl(0, 0%, 14%);
+  --ring: hsl(0, 0%, 62%);
+  --radius: 0.5rem;
+  --font-sans: Inter, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: Menlo, monospace;
+}
+
+.dark {
+  --background: hsl(0, 0%, 0%);
+  --foreground: hsl(0, 0%, 90%);
+  --card: hsl(0, 0%, 6%);
+  --card-foreground: hsl(0, 0%, 90%);
+  --popover: hsl(0, 0%, 4%);
+  --popover-foreground: hsl(0, 0%, 90%);
+  --primary: hsl(0, 0%, 62%);
+  --primary-foreground: hsl(0, 0%, 0%);
+  --secondary: hsl(0, 0%, 10%);
+  --secondary-foreground: hsl(0, 0%, 90%);
+  --muted: hsl(0, 0%, 10%);
+  --muted-foreground: hsl(0, 0%, 74%);
+  --accent: hsl(0, 0%, 10%);
+  --accent-foreground: hsl(0, 0%, 90%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --border: hsl(0, 0%, 14%);
+  --input: hsl(0, 0%, 14%);
+  --ring: hsl(0, 0%, 62%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #e6e6e6 0%, #9e9e9e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glass-effect {
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
