@@ -72,12 +72,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { userIdentifier } = req.body;
       
+      // Create the vote
       const vote = await storage.createVote({
         problemId: id,
         userIdentifier: userIdentifier || 'anonymous',
       });
       
-      res.json(vote);
+      // Update problem score based on vote count
+      const updatedProblem = await storage.updateProblemScore(id);
+      
+      res.json({ vote, problem: updatedProblem });
     } catch (error) {
       console.error("Error creating vote:", error);
       res.status(400).json({ message: "Failed to create vote" });

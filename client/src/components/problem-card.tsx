@@ -86,16 +86,23 @@ export default function ProblemCard({ problem, onVote }: ProblemCardProps) {
         
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onVote}
-              className="text-muted-foreground hover:text-foreground"
-              data-testid="button-upvote"
-            >
-              <ArrowUp className="w-4 h-4 mr-1" />
-              <span className="text-sm">{problem.score || 0}</span>
-            </Button>
+            {problem.source === "User" ? (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={onVote}
+                className="text-muted-foreground hover:text-foreground"
+                data-testid="button-upvote"
+              >
+                <ArrowUp className="w-4 h-4 mr-1" />
+                <span className="text-sm" data-testid="text-problem-score">{problem.score || 0}</span>
+              </Button>
+            ) : (
+              <div className="flex items-center space-x-1 text-muted-foreground">
+                <ArrowUp className="w-4 h-4" />
+                <span className="text-sm" data-testid="text-problem-score">{problem.score || 0}</span>
+              </div>
+            )}
             <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" data-testid="button-comment">
               <MessageCircle className="w-4 h-4 mr-1" />
               <span className="text-sm">0</span>

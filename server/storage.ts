@@ -23,6 +23,7 @@ export interface IStorage {
   
   // Vote methods
   createVote(vote: InsertVote): Promise<Vote>;
+  updateProblemScore(problemId: string): Promise<Problem>;
   
   // Entrepreneur methods
   createEntrepreneur(entrepreneur: InsertEntrepreneur): Promise<Entrepreneur>;
@@ -133,6 +134,25 @@ export class DatabaseStorage implements IStorage {
       .values(vote)
       .returning();
     return createdVote;
+  }
+
+  async updateProblemScore(problemId: string): Promise<Problem> {
+    // Count all votes for this problem
+    const voteCount = await db
+      .select({ count: sql`count(*)` })
+      .from(votes)
+      .where(eq(votes.problemId, problemId));
+    
+    const newScore = Number(voteCount[0]?.count) || 0;
+    
+    // Update the problem's score
+    const [updatedProblem] = await db
+      .update(problems)
+      .set({ score: newScore })
+      .where(eq(problems.id, problemId))
+      .returning();
+    
+    return updatedProblem;
   }
 
   // Entrepreneur methods
