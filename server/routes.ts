@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import { insertProblemSchema, insertVoteSchema, insertEntrepreneurSchema } from "@shared/schema";
-import { analyzeProblem, clusterProblems } from "./services/gemini";
+import { analyzeProblem, clusterProblems, analyzeSimilarity } from "./services/gemini";
 import { fetchRedditData } from "./services/reddit";
 
 const submitProblemSchema = insertProblemSchema.extend({
@@ -11,10 +11,61 @@ const submitProblemSchema = insertProblemSchema.extend({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Check for similar problems before submission
+  app.post("/api/problems/check-similarity", async (req, res) => {
+    try {
+      const { problemText } = req.body;
+      if (!problemText || problemText.length < 20) {
+        return res.status(400).json({ message: "Problem text must be at least 20 characters" });
+      }
+
+      // Get existing problems for comparison
+      const existingProblems = await storage.getProblems({
+        page: 1,
+        limit: 50,
+        sortBy: 'createdAt',
+        order: 'desc'
+      });
+
+      const similarity = await analyzeSimilarity(problemText, existingProblems.map(p => ({
+        id: p.id,
+        summary: p.summary || p.originalText.substring(0, 200),
+        originalText: p.originalText
+      })));
+      res.json(similarity);
+    } catch (error) {
+      console.error("Error checking similarity:", error);
+      res.status(500).json({ message: "Failed to check for similar problems" });
+    }
+  });
+
   // Submit a new problem
   app.post("/api/problems", async (req, res) => {
     try {
       const data = submitProblemSchema.parse(req.body);
+      
+      // Check for duplicates first (optional - can be skipped if forced)
+      const existingProblems = await storage.getProblems({
+        page: 1,
+        limit: 20,
+        sortBy: 'createdAt',
+        order: 'desc'
+      });
+      
+      const similarity = await analyzeSimilarity(data.originalText, existingProblems.map(p => ({
+        id: p.id,
+        summary: p.summary || p.originalText.substring(0, 200),
+        originalText: p.originalText
+      })));
+      
+      // If duplicate detected and not forced, return similarity analysis
+      if (similarity.isDuplicate && !req.body.forceSubmit) {
+        return res.status(409).json({
+          message: "Similar problem detected",
+          similarity,
+          canForce: true
+        });
+      }
       
       // Analyze with Gemini
       const analysis = await analyzeProblem(data.originalText, data.source || 'User');

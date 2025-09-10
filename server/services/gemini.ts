@@ -169,3 +169,125 @@ function createFallbackClusters(problems: Array<{ id: string; summary: string; k
     innovationGaps: 6
   }));
 }
+
+export interface SimilarityAnalysis {
+  isDuplicate: boolean;
+  similarProblems: Array<{
+    id: string;
+    summary: string;
+    similarity: number;
+    reason: string;
+  }>;
+  existingSolutions: string[];
+}
+
+export async function analyzeSimilarity(newProblemText: string, existingProblems: Array<{ id: string; summary: string; originalText: string }>): Promise<SimilarityAnalysis> {
+  try {
+    // If we have very few existing problems, just check for basic duplicates
+    if (existingProblems.length < 2) {
+      return {
+        isDuplicate: false,
+        similarProblems: [],
+        existingSolutions: []
+      };
+    }
+
+    const systemPrompt = `Analyze the new problem text against existing problems to detect:
+1. Duplicates or very similar problems (>80% similarity)
+2. Related problems that might have solutions or insights
+3. Existing solutions or approaches mentioned in similar problems
+
+Instructions:
+- Compare semantic meaning, not just keywords
+- Consider if problems address the same core issue
+- Rate similarity on 0-100 scale (80+ = duplicate, 60-79 = very similar, 40-59 = related)
+- Identify any existing solutions mentioned in similar problems
+- Focus on practical similarity that would help users
+
+Respond with JSON containing the analysis.`;
+
+    const analysisData = {
+      newProblem: newProblemText.substring(0, 300),
+      existingProblems: existingProblems.map(p => ({
+        id: p.id,
+        summary: p.summary?.substring(0, 200) || p.originalText.substring(0, 200),
+        originalText: p.originalText.substring(0, 200)
+      }))
+    };
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash-exp",
+      config: {
+        systemInstruction: systemPrompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "object",
+          properties: {
+            isDuplicate: { type: "boolean" },
+            similarProblems: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  summary: { type: "string" },
+                  similarity: { type: "number", minimum: 0, maximum: 100 },
+                  reason: { type: "string" }
+                },
+                required: ["id", "summary", "similarity", "reason"]
+              }
+            },
+            existingSolutions: {
+              type: "array",
+              items: { type: "string" }
+            }
+          },
+          required: ["isDuplicate", "similarProblems", "existingSolutions"]
+        },
+        temperature: 0.2
+      },
+      contents: `Analyze similarity:\n${JSON.stringify(analysisData, null, 2)}`
+    });
+
+    const rawJson = response.text;
+    if (rawJson) {
+      const analysis: SimilarityAnalysis = JSON.parse(rawJson);
+      // Filter out low-similarity matches
+      analysis.similarProblems = analysis.similarProblems.filter(p => p.similarity >= 40);
+      return analysis;
+    }
+    return createFallbackSimilarityAnalysis(newProblemText, existingProblems);
+  } catch (error) {
+    console.error("Failed to analyze similarity:", error);
+    return createFallbackSimilarityAnalysis(newProblemText, existingProblems);
+  }
+}
+
+function createFallbackSimilarityAnalysis(newProblemText: string, existingProblems: Array<{ id: string; summary: string; originalText: string }>): SimilarityAnalysis {
+  // Simple keyword-based similarity fallback
+  const newTextLower = newProblemText.toLowerCase();
+  const words = newTextLower.split(/\s+/).filter(word => word.length > 3);
+  
+  const similarProblems = existingProblems
+    .map(existing => {
+      const existingText = (existing.summary || existing.originalText).toLowerCase();
+      const matchingWords = words.filter(word => existingText.includes(word));
+      const similarity = Math.min(95, (matchingWords.length / Math.max(words.length, 1)) * 100);
+      
+      return {
+        id: existing.id,
+        summary: existing.summary || existing.originalText.substring(0, 100) + "...",
+        similarity: Math.round(similarity),
+        reason: similarity > 50 ? `Similar keywords: ${matchingWords.slice(0, 3).join(', ')}` : "Some keyword overlap"
+      };
+    })
+    .filter(p => p.similarity >= 40)
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, 5);
+
+  return {
+    isDuplicate: similarProblems.length > 0 && similarProblems[0].similarity >= 80,
+    similarProblems,
+    existingSolutions: []
+  };
+}
