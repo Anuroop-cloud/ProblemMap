@@ -31,6 +31,7 @@ export interface IStorage {
     expertise?: string;
     search?: string;
   }): Promise<Entrepreneur[]>;
+  getMatchingEntrepreneurs(problemId: string): Promise<Array<Entrepreneur & { matchScore: number; matchReasons: string[] }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -188,6 +189,75 @@ export class DatabaseStorage implements IStorage {
     
     const result = await query.orderBy(asc(entrepreneurs.name));
     return result;
+  }
+
+  async getMatchingEntrepreneurs(problemId: string): Promise<Array<Entrepreneur & { matchScore: number; matchReasons: string[] }>> {
+    // First get the problem details
+    const [problem] = await db.select().from(problems).where(eq(problems.id, problemId));
+    if (!problem) {
+      return [];
+    }
+
+    // Get all entrepreneurs
+    const allEntrepreneurs = await db.select().from(entrepreneurs);
+    
+    const matches: Array<Entrepreneur & { matchScore: number; matchReasons: string[] }> = [];
+
+    for (const entrepreneur of allEntrepreneurs) {
+      let score = 0;
+      const reasons: string[] = [];
+
+      // Check category match (highest weight)
+      if (problem.category && entrepreneur.expertise.includes(problem.category)) {
+        score += 50;
+        reasons.push(`Expertise in ${problem.category}`);
+      }
+
+      // Check keyword matches
+      const problemKeywords = problem.keywords || [];
+      const matchingKeywords = problemKeywords.filter(keyword => 
+        entrepreneur.expertise.some(exp => 
+          exp.toLowerCase().includes(keyword.toLowerCase()) || 
+          keyword.toLowerCase().includes(exp.toLowerCase())
+        )
+      );
+
+      if (matchingKeywords.length > 0) {
+        score += matchingKeywords.length * 15;
+        reasons.push(`Keywords: ${matchingKeywords.join(', ')}`);
+      }
+
+      // Check if entrepreneur description mentions problem keywords or category
+      if (entrepreneur.description) {
+        const descLower = entrepreneur.description.toLowerCase();
+        const categoryMatch = problem.category && descLower.includes(problem.category.toLowerCase());
+        const keywordMatches = problemKeywords.filter(keyword => 
+          descLower.includes(keyword.toLowerCase())
+        );
+
+        if (categoryMatch) {
+          score += 20;
+          reasons.push(`Experience in ${problem.category.toLowerCase()}`);
+        }
+
+        if (keywordMatches.length > 0) {
+          score += keywordMatches.length * 10;
+          reasons.push(`Background in ${keywordMatches.join(', ')}`);
+        }
+      }
+
+      // Only include entrepreneurs with meaningful matches
+      if (score > 0) {
+        matches.push({
+          ...entrepreneur,
+          matchScore: score,
+          matchReasons: reasons
+        });
+      }
+    }
+
+    // Sort by match score descending
+    return matches.sort((a, b) => b.matchScore - a.matchScore);
   }
 }
 

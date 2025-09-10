@@ -162,6 +162,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get matching entrepreneurs for a problem
+  app.get("/api/problems/:id/matches", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const matches = await storage.getMatchingEntrepreneurs(id);
+      res.json(matches);
+    } catch (error) {
+      console.error("Error finding entrepreneur matches:", error);
+      res.status(500).json({ message: "Failed to find entrepreneur matches" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
