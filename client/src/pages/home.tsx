@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ProblemCard from "../components/problem-card";
 import ClusterCard from "../components/cluster-card";
+import ClusterVisualization from "../components/cluster-visualization";
 import EntrepreneurCard from "../components/entrepreneur-card";
 import ProblemSubmissionModal from "../components/problem-submission-modal";
 import FilterBar from "../components/filter-bar";
@@ -44,7 +45,7 @@ export default function Home() {
   // Fetch problems
   const { data: problems = [], isLoading: problemsLoading } = useQuery<Problem[]>({
     queryKey: ["/api/problems", filters],
-    enabled: activeTab === "problems",
+    enabled: activeTab === "problems" || activeTab === "clusters",
   });
 
   // Fetch clusters
@@ -238,6 +239,21 @@ export default function Home() {
                 <div className="text-muted-foreground">Total Problems</div>
               </div>
             </div>
+
+            {/* Cluster Network Visualization */}
+            {clusters.length > 0 && (
+              <div className="mb-8">
+                <ClusterVisualization 
+                  clusters={clusters} 
+                  problems={problems.map(p => ({
+                    id: p.id,
+                    summary: p.summary || p.originalText.substring(0, 200),
+                    category: p.category || 'Other',
+                    keywords: p.keywords || []
+                  }))} 
+                />
+              </div>
+            )}
 
             {/* Clusters Grid */}
             <div className="grid md:grid-cols-2 gap-6" data-testid="clusters-grid">
