@@ -10,11 +10,12 @@ import ClusterVisualization from "../components/cluster-visualization";
 import EntrepreneurCard from "../components/entrepreneur-card";
 import ProblemSubmissionModal from "../components/problem-submission-modal";
 import FilterBar from "../components/filter-bar";
+import DataExport from "../components/data-export";
 import { Problem, Entrepreneur } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Plus, User } from "lucide-react";
 
-type TabType = "problems" | "clusters" | "entrepreneurs";
+type TabType = "problems" | "clusters" | "entrepreneurs" | "export";
 
 interface Cluster {
   clusterName: string;
@@ -132,6 +133,13 @@ export default function Home() {
                   data-testid="tab-entrepreneurs"
                 >
                   Entrepreneurs
+                </button>
+                <button 
+                  className={`transition-colors ${activeTab === "export" ? "text-foreground" : "text-muted-foreground hover:text-primary"}`}
+                  onClick={() => setActiveTab("export")}
+                  data-testid="tab-export"
+                >
+                  Export
                 </button>
               </nav>
             </div>
@@ -326,6 +334,24 @@ export default function Home() {
                   <EntrepreneurCard key={entrepreneur.id} entrepreneur={entrepreneur} />
                 ))
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Export Tab */}
+        {activeTab === "export" && (
+          <div className="space-y-6">
+            {/* Export Header */}
+            <div className="text-center max-w-2xl mx-auto">
+              <h1 className="text-4xl font-bold gradient-text mb-4">Export Data</h1>
+              <p className="text-xl text-muted-foreground">
+                Download your problem data, clusters, and analytics in multiple formats
+              </p>
+            </div>
+
+            {/* Export Component */}
+            <div className="max-w-4xl mx-auto">
+              <DataExport />
             </div>
           </div>
         )}
